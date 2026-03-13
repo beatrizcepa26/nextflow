@@ -91,6 +91,7 @@ import nextflow.util.Threads
 import org.apache.commons.lang3.exception.ExceptionUtils
 import sun.misc.Signal
 import sun.misc.SignalHandler
+import nextflow.analyzer.SlurmTaskGroupAnalyzer
 /**
  * Holds the information on the current execution
  *
@@ -1045,6 +1046,14 @@ class Session implements ISession {
     }
 
     void notifyFlowBegin() {
+        // Run Slurm task grouping analysis before task execution
+        try {
+            def analyzer = new SlurmTaskGroupAnalyzer(this)
+            analyzer.analyze()
+        } catch (Exception e) {
+            log.debug "Slurm task grouping analysis failed: ${e.message}", e
+        }
+        
         notifyEvent(observersV1, ob -> ob.onFlowBegin())
         notifyEvent(observersV2, ob -> ob.onFlowBegin())
     }
