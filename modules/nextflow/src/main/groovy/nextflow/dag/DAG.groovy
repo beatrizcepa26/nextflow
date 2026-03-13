@@ -53,7 +53,6 @@ import java.util.concurrent.atomic.AtomicLong
 @Slf4j
 class DAG {
 
-    @PackageScope
     static enum Type {
         PROCESS,
         OPERATOR,
