@@ -88,7 +88,7 @@ class TaskGroupBuilder {
 
             if( placed == null ) {
                 if( !fitsNodeCapacity(task) ) {
-                    throw new IllegalStateException("[SLURM TASK GROUPING] Task '${task.getName()}' exceeds node capacity: cpus=${task.getCpus()}, memory=${task.getMemory()}, time=${task.getTime()}")
+                    throw new IllegalStateException("[SLURM TASK GROUPING] Task '${task.getName()}' exceeds node capacity: cpus=${task.getCpus()}, memory=${task.getMemory()}")
                 }
 
                 final TaskGroup group = new TaskGroup(level, ++groupId)
@@ -110,10 +110,6 @@ class TaskGroupBuilder {
         if( maxMemory != null && task.getMemory() != null && task.getMemory().compareTo(maxMemory) > 0 )
             return false
 
-        final Duration maxTime = analyzer.getNodeMaxTime()
-        if( maxTime != null && task.getTime() != null && task.getTime().compareTo(maxTime) > 0 )
-            return false
-
         return true
     }
 
@@ -131,13 +127,6 @@ class TaskGroupBuilder {
             final MemoryUnit incoming = task.getMemory()
             final MemoryUnit candidate = incoming != null ? current.plus(incoming) : current
             if( candidate.compareTo(maxMemory) > 0 )
-                return false
-        }
-
-        final Duration maxTime = analyzer.getNodeMaxTime()
-        if( maxTime != null && task.getTime() != null ) {
-            final Duration candidate = task.getTime().compareTo(group.getMaxTime()) > 0 ? task.getTime() : group.getMaxTime()
-            if( candidate.compareTo(maxTime) > 0 )
                 return false
         }
 
