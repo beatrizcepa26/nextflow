@@ -36,25 +36,6 @@ class SlurmTaskGroupAnalyzer {
     }
 
     /**
-     * Main method to perform analysis for Slurm task grouping.
-     * It checks if task grouping is enabled, collects process vertices, builds a dependency graph,
-     * and identifies parallelizable tasks based on their levels in the graph.
-     */
-    void analyze() {
-        final DependencyGraph dependencyGraph = analyzeDependencyGraph()
-        if( dependencyGraph == null )
-            return
-
-        try {
-            Map<Integer, List<Long>> parallelTasks = identifyParallelTasks(dependencyGraph)
-            log.debug "[SLURM TASK GROUPING] Tasks grouped by levels: ${parallelTasks.collect { k, v -> "Level $k: ${v.size()} tasks" }.join(', ')}"
-        }
-        catch( Exception e ) {
-            log.error "[SLURM TASK GROUPING] Error during analysis: ${e.message}", e
-        }
-    }
-
-    /**
      * Build and return the dependency graph with process nodes and dependencies.
      * This method also initializes node-capacity limits from config.
      *
