@@ -24,11 +24,9 @@ class SlurmTaskGroupAnalyzer {
     private DAG dag
     private int nodeMaxCpus
     private MemoryUnit nodeMaxMemory
-    private Duration nodeMaxTime
 
     int getNodeMaxCpus() { nodeMaxCpus }
     MemoryUnit getNodeMaxMemory() { nodeMaxMemory }
-    Duration getNodeMaxTime() { nodeMaxTime }
 
     SlurmTaskGroupAnalyzer(Session session) {
         this.session = session
@@ -82,7 +80,6 @@ class SlurmTaskGroupAnalyzer {
      *       nodeCapacity {
      *         cpus   = 32
      *         memory = '256 GB'
-     *         time   = '24h'
      *       }
      *     }
      *   }
@@ -96,10 +93,7 @@ class SlurmTaskGroupAnalyzer {
         final memory = session.config.navigate('executor.slurm.nodeCapacity.memory')
         nodeMaxMemory = memory ? new MemoryUnit(memory.toString()) : null
 
-        final time = session.config.navigate('executor.slurm.nodeCapacity.time')
-        nodeMaxTime = time ? new Duration(time.toString()) : null
-
-        log.debug "[SLURM TASK GROUPING] Node capacity — cpus=${nodeMaxCpus ?: 'unlimited'}, memory=${nodeMaxMemory ?: 'unlimited'}, time=${nodeMaxTime ?: 'unlimited'}"
+        log.debug "[SLURM TASK GROUPING] Node capacity — cpus=${nodeMaxCpus ?: 'unlimited'}, memory=${nodeMaxMemory ?: 'unlimited'}"
     }
 
     /**
@@ -142,7 +136,7 @@ class SlurmTaskGroupAnalyzer {
     private TaskNode analyzeVertex(DAG.Vertex vertex) {
         final TaskProcessor processor = vertex.process
         final TaskNode node = new TaskNode(vertex, processor)
-        log.debug "[SLURM TASK GROUPING] Analyzing vertex: ${vertex.label} — cpus=${node.getCpus()}, memory=${node.getMemory()}, time=${node.getTime()}"
+        log.debug "[SLURM TASK GROUPING] Analyzing vertex: ${vertex.label} — cpus=${node.getCpus()}, memory=${node.getMemory()}"
         return node
     } 
 
