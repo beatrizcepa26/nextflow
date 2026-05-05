@@ -282,7 +282,8 @@ class GridTaskHandler extends TaskHandler implements FusionAwareTask {
         }
     }
 
-    private void updateStatus(String jobId) {
+    @groovy.transform.PackageScope
+    void updateStatus(String jobId) {
         if( task instanceof TaskArrayRun ) {
             for( int i=0; i<task.children.size(); i++ ) {
                 final handler = task.children[i] as GridTaskHandler

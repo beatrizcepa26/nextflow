@@ -22,8 +22,11 @@ import java.util.regex.Pattern
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import nextflow.fusion.FusionHelper
+import nextflow.executor.taskgroup.TaskGroup
+import nextflow.executor.taskgroup.TaskGroupScriptBuilder
 import nextflow.processor.TaskArrayRun
 import nextflow.processor.TaskConfig
+import nextflow.processor.TaskMonitor
 import nextflow.processor.TaskRun
 /**
  * Processor for SLURM resource manager
@@ -129,6 +132,23 @@ class SlurmExecutor extends AbstractGridExecutor implements TaskArrayExecutor {
     }
 
     /**
+     * Build a SLURM batch script for the given task group.
+     *
+     * @param group The task group whose tasks should be co-scheduled on a single node
+     * @param taskWorkDirs A map from {@link nextflow.executor.analyzer.TaskNode} ID to the
+     *        work directory of the corresponding task run
+     * @return A SLURM batch script as a string
+     */
+    String buildGroupScript(TaskGroup group, Map<Long, Path> taskWorkDirs) {
+        return createTaskGroupScriptBuilder(group, taskWorkDirs).build()
+    }
+
+    protected TaskGroupScriptBuilder createTaskGroupScriptBuilder(TaskGroup group, Map<Long,Path> taskWorkDirs) {
+        final account = config.getExecConfigProp(name, 'account', null) as String
+        return new TaskGroupScriptBuilder(group, taskWorkDirs, account)
+    }
+
+    /**
      * Parse the string returned by the {@code sbatch} command and extract the job ID string
      *
      * @param text The string returned when submitting the job
@@ -214,6 +234,13 @@ class SlurmExecutor extends AbstractGridExecutor implements TaskArrayExecutor {
         }
 
         return result
+    }
+
+    @Override
+    TaskMonitor createTaskMonitor() {
+        if( session.config.navigate('executor.slurm.taskGrouping', false) as boolean )
+            return SlurmGroupTaskMonitor.create(this)
+        return super.createTaskMonitor()
     }
 
     @Override
