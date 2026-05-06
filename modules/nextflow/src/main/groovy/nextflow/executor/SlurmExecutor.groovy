@@ -238,7 +238,9 @@ class SlurmExecutor extends AbstractGridExecutor implements TaskArrayExecutor {
 
     @Override
     TaskMonitor createTaskMonitor() {
-        if( session.config.navigate('executor.slurm.taskGrouping', false) as boolean )
+        final taskGrouping = session.config.navigate('executor.slurm.taskGrouping', false) as boolean
+        log.debug "[SLURM] createTaskMonitor — taskGrouping=${taskGrouping}; config keys at executor.slurm=${session.config.navigate('executor.slurm')}"
+        if( taskGrouping )
             return SlurmGroupTaskMonitor.create(this)
         return super.createTaskMonitor()
     }
