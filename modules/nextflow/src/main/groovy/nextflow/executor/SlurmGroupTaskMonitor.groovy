@@ -121,8 +121,16 @@ class SlurmGroupTaskMonitor extends TaskPollingMonitor {
             log.debug "[SLURM TASK GROUPING] Group ${group.groupId} submitted > jobId: $jobId"
             for (GridTaskHandler h : ready) {
                 h.updateStatus(jobId)
+                // Mark the handler as RUNNING immediately: for grouped tasks the group SLURM job is
+                // already submitted and executing, so we don't need to poll for .command.start or
+                // wait for the job to appear in squeue. Skipping isStarted() prevents a permanent
+                // stall when the job finishes quickly and neither file is NFS-visible within the
+                // 270 s check window.
+                h.markAsStarted()
                 getRunningQueue().add(h)
                 session.notifyTaskSubmit(h)
+                session.notifyTaskStart(h)
+                log.debug "[SLURM TASK GROUPING] Task '${h.task.name}' marked as started > jobId: $jobId"
             }
         }
         catch (Exception e) {

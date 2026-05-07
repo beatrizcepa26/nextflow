@@ -297,6 +297,19 @@ class GridTaskHandler extends TaskHandler implements FusionAwareTask {
         }
     }
 
+    /**
+     * Directly transitions this handler from SUBMITTED to RUNNING, bypassing the {@link #isStarted()}
+     * file/queue check. Used by task-grouping to avoid permanent stalls when the group SLURM job
+     * completes quickly and the start file hasn't propagated through NFS yet.
+     */
+    @groovy.transform.PackageScope
+    void markAsStarted() {
+        if( isSubmitted() ) {
+            status = RUNNING
+            startedMillis = System.currentTimeMillis()
+        }
+    }
+
     private long startedMillis
 
     private long exitTimestampMillis0 = System.currentTimeMillis()
