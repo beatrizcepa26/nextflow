@@ -52,8 +52,7 @@ class TaskGroupScriptBuilder {
         return script.toString()
     }
 
-    // -- header generation ---------------------------------------------------
-
+    // header generation 
     private String buildHeaders() {
         final result = new StringBuilder()
         final directives = buildDirectives()
@@ -92,11 +91,12 @@ class TaskGroupScriptBuilder {
 
         // Discard stdout/stderr – each task's .command.run handles its own logging
         directives << '-o' << '/dev/null'
+        directives << '-e' << '/dev/null'
 
         return directives
     }
 
-    // -- body generation -----------------------------------------------------
+    // body generation
 
     private String buildBody() {
         final body = new StringBuilder()
