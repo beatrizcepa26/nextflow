@@ -107,16 +107,7 @@ class TaskGroupScriptBuilder {
                 throw new IllegalArgumentException(
                     "No work directory provided for task '${task.getName()}' (id=${task.getId()})")
 
-            body << 'srun --exclusive'
-            body << " -c ${task.getCpus()}"
-
-            final MemoryUnit taskMem = task.getMemory()
-            if (taskMem && taskMem.compareTo(MemoryUnit.ZERO) > 0) {
-                final long memPerCpu = taskMem.toMega().intdiv(task.getCpus())
-                body << " --mem-per-cpu ${memPerCpu}M"
-            }
-
-            body << " bash ${workDir}/${TaskRun.CMD_RUN} >> ${workDir}/${TaskRun.CMD_LOG} 2>&1 &\n"
+            body << "bash ${workDir}/${TaskRun.CMD_RUN} >> ${workDir}/${TaskRun.CMD_LOG} 2>&1 &\n"
         }
 
         body << 'wait\n'
