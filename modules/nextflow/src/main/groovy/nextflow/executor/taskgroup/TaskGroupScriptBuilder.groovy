@@ -15,9 +15,9 @@ import java.nio.file.Path
  * The generated script:
  * - declares {@code #SBATCH} directives derived from the group's aggregate resource requirements
  * - allocates exactly one node ({@code -N 1}) so all tasks share the same host
- * - launches one {@code srun --exclusive} step per task in parallel (backgrounded with {@code &})
- *   so each step gets dedicated CPU cores within the allocation
- * - ends with {@code wait} to block until every step finishes
+ * - launches each task's {@code .command.run} via {@code bash} in the background ({@code &}),
+ *   sharing the node's already-allocated resources without creating SLURM job steps
+ * - ends with {@code wait} to block until every task finishes
  *
  */
 @Slf4j
