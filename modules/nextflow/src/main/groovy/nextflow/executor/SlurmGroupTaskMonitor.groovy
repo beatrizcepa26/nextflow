@@ -113,10 +113,12 @@ class SlurmGroupTaskMonitor extends TaskPollingMonitor {
 
         final Map<Long, Path> workDirs = coord.buildWorkDirMap(ready)
         final String script = slurmExecutor.buildGroupScript(group, workDirs)
+        final Path scriptFile = ready[0].task.workDir.resolve('.command.group')
+        scriptFile.text = script
 
-        log.debug "[SLURM TASK GROUPING] Submitting group ${group.groupId} (${ready.size()} task(s))"
+        log.debug "[SLURM TASK GROUPING] Submitting group ${group.groupId} (${ready.size()} task(s)); script: ${scriptFile}"
         try {
-            final String result = submitGroupScript(script)
+            final String result = submitGroupScript(scriptFile)
             final String jobId  = (String) slurmExecutor.parseJobId(result)
             log.debug "[SLURM TASK GROUPING] Group ${group.groupId} submitted > jobId: $jobId"
             for (GridTaskHandler h : ready) {
@@ -146,13 +148,11 @@ class SlurmGroupTaskMonitor extends TaskPollingMonitor {
         super.submit(handler)
     }
 
-    private String submitGroupScript(String script) {
-        final process = new ProcessBuilder(['sbatch'])
+    private String submitGroupScript(Path scriptFile) {
+        final process = new ProcessBuilder(['sbatch', scriptFile.toString()])
             .redirectErrorStream(true)
             .start()
         try {
-            process.out << script
-            process.out.close()
             final result = process.text
             final exit   = process.waitFor()
             if (exit != 0)
