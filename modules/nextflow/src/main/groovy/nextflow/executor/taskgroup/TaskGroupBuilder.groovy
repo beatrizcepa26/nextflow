@@ -23,7 +23,7 @@ import java.util.stream.Collectors
 class TaskGroupBuilder {
 
     private final SlurmTaskGroupAnalyzer analyzer
-    private static int groupId = 0
+    private int groupId = 0
 
     TaskGroupBuilder(SlurmTaskGroupAnalyzer analyzer) {
         this.analyzer = analyzer
