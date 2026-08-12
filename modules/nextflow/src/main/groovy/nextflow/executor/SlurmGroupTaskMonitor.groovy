@@ -19,6 +19,8 @@ package nextflow.executor
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import nextflow.exception.ProcessNonZeroExitStatusException
+import nextflow.executor.analyzer.SlurmTaskGroupAnalyzer
+import nextflow.executor.taskgroup.GroupingPolicy
 import nextflow.executor.taskgroup.TaskGroup
 import nextflow.processor.TaskHandler
 import nextflow.processor.TaskPollingMonitor
@@ -75,8 +77,10 @@ class SlurmGroupTaskMonitor extends TaskPollingMonitor {
     }
 
     private synchronized TaskGroupCoordinator getCoordinator() {
-        if (coordinator == null)
-            coordinator = new TaskGroupCoordinator(session)
+        if (coordinator == null) {
+            final GroupingPolicy policy = new SlurmTaskGroupAnalyzer(session).resolveGroupingPolicy()
+            coordinator = new TaskGroupCoordinator(session, policy)
+        }
         return coordinator
     }
 

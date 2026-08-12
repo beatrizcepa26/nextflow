@@ -1167,7 +1167,8 @@ class Session implements ISession {
         if( config.navigate('executor.slurm.taskGrouping', false) as boolean ) {
             try {
                 def analyzer = new SlurmTaskGroupAnalyzer(this)
-                def builder = new TaskGroupBuilder(analyzer)
+                def policy = analyzer.resolveGroupingPolicy()
+                def builder = new TaskGroupBuilder(analyzer, policy)
                 this.taskGroups = builder.build()
             } catch (Exception e) {
                 log.debug "Slurm task grouping failed: ${e.message}", e

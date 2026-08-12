@@ -4,6 +4,9 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import nextflow.Session
 import nextflow.dag.DAG
+import nextflow.executor.taskgroup.FirstFit
+import nextflow.executor.taskgroup.GroupingPolicy
+import nextflow.executor.taskgroup.Tetris
 import nextflow.processor.TaskProcessor
 import nextflow.util.Duration
 import nextflow.util.MemoryUnit
@@ -68,6 +71,22 @@ class SlurmTaskGroupAnalyzer {
       */
     private boolean isTaskGroupingEnabled() {
         return session.config.navigate('executor.slurm.taskGrouping', false) as boolean
+    }
+
+    /**
+     * Resolve the {@link GroupingPolicy} configured via {@code executor.slurm.taskGroupingPolicy}.
+     * Missing config defaults to {@code first-fit}.
+     *
+     * @throws IllegalArgumentException if the configured value does not match a supported policy
+     */
+    GroupingPolicy resolveGroupingPolicy() {
+        final String name = session.config.navigate('executor.slurm.taskGroupingPolicy', 'first-fit') as String
+        switch (name) {
+            case 'first-fit': return new FirstFit()
+            case 'tetris':    return new Tetris()
+            default: throw new IllegalArgumentException(
+                "Unknown executor.slurm.taskGroupingPolicy: '${name}' — supported: first-fit, tetris")
+        }
     }
 
     /**
