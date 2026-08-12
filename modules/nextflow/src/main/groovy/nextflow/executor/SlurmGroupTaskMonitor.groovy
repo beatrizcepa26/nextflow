@@ -107,11 +107,14 @@ class SlurmGroupTaskMonitor extends TaskPollingMonitor {
         gridHandler.prepareLauncher()
         log.debug "[SLURM TASK GROUPING] Buffering task '${gridHandler.task.name}' — waiting for group to complete"
 
-        final TaskGroup group = coord.findGroup(gridHandler.task)
-        final List<GridTaskHandler> ready = coord.offer(gridHandler)
-        if (ready == null) return  // group not yet complete — handler is held in coordinator
+        final List<TaskGroupCoordinator.GroupBatch> batches = coord.offer(gridHandler)
+        for (TaskGroupCoordinator.GroupBatch batch : batches)
+            submitGroup(batch.group, batch.handlers)
+    }
 
-        final Map<Long, Path> workDirs = coord.buildWorkDirMap(ready)
+    /** Build and submit the SBATCH script for a single ready {@link TaskGroup} batch. */
+    private void submitGroup(TaskGroup group, List<GridTaskHandler> ready) {
+        final Map<Long, Path> workDirs = getCoordinator().buildWorkDirMap(ready)
         final String script = slurmExecutor.buildGroupScript(group, workDirs)
         final Path scriptFile = ready[0].task.workDir.resolve('.command.group')
         scriptFile.text = script

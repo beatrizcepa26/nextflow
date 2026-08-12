@@ -14,7 +14,8 @@ import java.util.stream.Collectors
  * Builds task groups per level from the analyzer dependency graph, while
  * respecting configured node resource limits.
  *
- * Uses first-fit placement inside each level.
+ * The placement strategy is supplied via a {@link GroupingPolicy}. When no policy
+ * is provided the default is {@link FirstFit}.
  *
  * @author Beatriz Cepa
  */
@@ -23,10 +24,16 @@ import java.util.stream.Collectors
 class TaskGroupBuilder {
 
     private final SlurmTaskGroupAnalyzer analyzer
+    private final GroupingPolicy policy
     private int groupId = 0
 
     TaskGroupBuilder(SlurmTaskGroupAnalyzer analyzer) {
+        this(analyzer, new FirstFit())
+    }
+
+    TaskGroupBuilder(SlurmTaskGroupAnalyzer analyzer, GroupingPolicy policy) {
         this.analyzer = analyzer
+        this.policy   = policy
     }
 
     /**
@@ -75,61 +82,46 @@ class TaskGroupBuilder {
 
     private List<TaskGroup> buildGroupsForLevel(int level, List<TaskNode> tasks) {
         final List<TaskGroup> groups = new ArrayList<>()
+        final int maxCpus = analyzer.getNodeMaxCpus()
+        final MemoryUnit maxMem = analyzer.getNodeMaxMemory()
+        final Duration maxTime = analyzer.getNodeMaxTime()
 
-        for( TaskNode task : tasks ) {
-            TaskGroup placed = null
-            for( TaskGroup group : groups ) {
-                if( canFit(task, group) ) {
-                    group.addTask(task)
-                    placed = group
-                    break
-                }
+        for( TaskNode task : tasks )
+            if( !fitsNodeCapacity(task, maxCpus, maxMem) )
+                throw new IllegalStateException("[SLURM TASK GROUPING] Task '${task.getName()}' exceeds node capacity: cpus=${task.getCpus()}, memory=${task.getMemory()}")
+
+        // Iterative placement: on each round the policy scores all remaining tasks against
+        // all open groups. Tasks the policy cannot fit (null) are retried after a new empty
+        // group is added. Every task fits an empty group (fitsNodeCapacity guarantees this),
+        // so at least one task is placed per new group → termination is guaranteed.
+        List<TaskNode> remaining = new ArrayList<>(tasks)
+        while( !remaining.isEmpty() ) {
+            final Map<TaskNode, TaskGroup> assignments = policy.placeAll(remaining, groups, maxCpus, maxMem, maxTime)
+            final List<TaskNode> unplaced = new ArrayList<>()
+
+            for( TaskNode task : remaining ) {
+                final TaskGroup placed = assignments.get(task)
+                if( placed != null ) placed.addTask(task)
+                else unplaced.add(task)
             }
 
-            if( placed == null ) {
-                if( !fitsNodeCapacity(task) ) {
-                    throw new IllegalStateException("[SLURM TASK GROUPING] Task '${task.getName()}' exceeds node capacity: cpus=${task.getCpus()}, memory=${task.getMemory()}")
-                }
-
-                final TaskGroup group = new TaskGroup(level, ++groupId)
-                group.addTask(task)
-                groups.add(group)
+            if( !unplaced.isEmpty() && unplaced.size() == remaining.size() ) {
+                // No task was placed - no open group could accommodate any of them.
+                // Open one new empty group so the next round can make progress.
+                groups.add(new TaskGroup(level, ++groupId))
             }
+            remaining = unplaced
         }
 
         log.debug "[SLURM TASK GROUPING] Level ${level} packed into ${groups.size()} group(s)"
         return groups
     }
 
-    private boolean fitsNodeCapacity(TaskNode task) {
-        final int maxCpus = analyzer.getNodeMaxCpus()
+    private static boolean fitsNodeCapacity(TaskNode task, int maxCpus, MemoryUnit maxMem) {
         if( maxCpus > 0 && task.getCpus() > maxCpus )
             return false
-
-        final MemoryUnit maxMemory = analyzer.getNodeMaxMemory()
-        if( maxMemory != null && task.getMemory() != null && task.getMemory().compareTo(maxMemory) > 0 )
+        if( maxMem != null && task.getMemory() != null && task.getMemory().compareTo(maxMem) > 0 )
             return false
-
-        return true
-    }
-
-    private boolean canFit(TaskNode task, TaskGroup group) {
-        if( group.getQueue() != null && task.getQueue() != group.getQueue() )
-            return false
-
-        final int maxCpus = analyzer.getNodeMaxCpus()
-        if( maxCpus > 0 && (group.getTotalCpus() + task.getCpus()) > maxCpus )
-            return false
-
-        final MemoryUnit maxMemory = analyzer.getNodeMaxMemory()
-        if( maxMemory != null ) {
-            final MemoryUnit current = group.getTotalMemory()
-            final MemoryUnit incoming = task.getMemory()
-            final MemoryUnit candidate = incoming != null ? current.plus(incoming) : current
-            if( candidate.compareTo(maxMemory) > 0 )
-                return false
-        }
-
         return true
     }
 }
