@@ -68,7 +68,9 @@ class Tetris implements GroupingPolicy {
 
     /**
      * Dot product of the task's resource vector against the group's remaining-capacity
-     * vector. Raw (un-normalised) values are used; only dimensions with a configured
+     * vector. Both vectors are normalised by the machine's overall capacity in each
+     * dimension so that terms are dimensionless and comparable regardless of the raw
+     * numerical ranges of cpus, memory and time; only dimensions with a configured
      * node ceiling contribute to the score.
      *
      * For CPUs and memory, tasks run concurrently so the group accumulates the sum:
@@ -82,20 +84,27 @@ class Tetris implements GroupingPolicy {
         double score = 0.0d
 
         if (nodeMaxCpus > 0) {
-            final long remainingCpus = nodeMaxCpus - group.getTotalCpus()
-            score += (double) task.getCpus() * remainingCpus
+            final double remainingCpus = (nodeMaxCpus - group.getTotalCpus()) / (double) nodeMaxCpus
+            final double taskCpus = task.getCpus() / (double) nodeMaxCpus
+            score += taskCpus * remainingCpus
         }
 
-        if (nodeMaxMem != null) {
+        if (nodeMaxMem != null && nodeMaxMem.toBytes() > 0) {
             final long usedMem = group.getTotalMemory() ? group.getTotalMemory().toBytes() : 0L
-            final long taskMem = task.getMemory() ? task.getMemory().toBytes() : 0L
-            score += (double) taskMem * (nodeMaxMem.toBytes() - usedMem)
+            final long taskMemBytes = task.getMemory() ? task.getMemory().toBytes() : 0L
+            final double nodeMaxMemBytes = (double) nodeMaxMem.toBytes()
+            final double remainingMem = (nodeMaxMemBytes - usedMem) / nodeMaxMemBytes
+            final double taskMem = taskMemBytes / nodeMaxMemBytes
+            score += taskMem * remainingMem
         }
 
-        if (nodeMaxTime != null) {
+        if (nodeMaxTime != null && nodeMaxTime.toMillis() > 0) {
             final long usedMs = group.getMaxTime() ? group.getMaxTime().toMillis() : 0L
-            final long taskMs = task.getTime() ? task.getTime().toMillis() : 0L
-            score += (double) taskMs * (nodeMaxTime.toMillis() - usedMs)
+            final long taskMsRaw = task.getTime() ? task.getTime().toMillis() : 0L
+            final double nodeMaxTimeMs = (double) nodeMaxTime.toMillis()
+            final double remainingTime = (nodeMaxTimeMs - usedMs) / nodeMaxTimeMs
+            final double taskMs = taskMsRaw / nodeMaxTimeMs
+            score += taskMs * remainingTime
         }
 
         return score
